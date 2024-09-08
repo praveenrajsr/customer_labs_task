@@ -57,12 +57,12 @@ const SaveSegment = ({ }) => {
     }, [sectionRef]);
 
 
-    const AddOptionState = (selectedData: Options) => {
+    const addOptionState = (selectedData: Options) => {
         setOptions(options.filter(option => option.value !== selectedData.value))
         setSelectedOptions(prevSelectedOptions => [...prevSelectedOptions, ...(selectedData ? [selectedData] : [])])
     }
 
-    const ReplaceOptionState = (oldSelected: Options, newSelectedData: Options) => {
+    const replaceOptionState = (oldSelected: Options, newSelectedData: Options) => {
         setOptions(previousOptions => {
             let updatedOptions = previousOptions;
             if (!previousOptions.some(option => option.value === oldSelected.value)) {
@@ -82,7 +82,7 @@ const SaveSegment = ({ }) => {
         const selectedOption = formData.get('addschema') as string;
         if (!selectedOption) return;
         const selectedData = options.find(option => option.value === selectedOption)
-        AddOptionState(selectedData as Options)
+        addOptionState(selectedData as Options)
         setValue(undefined)
         setKey(+new Date())
     }
@@ -91,6 +91,15 @@ const SaveSegment = ({ }) => {
         const schema = selectedOptions.map(option => ({
             [option.value]: option.label
         }));
+        // Basic validation
+        if (segmentName === '' || schema.length === 0) {
+            if (segmentName === '') {
+                alert("Please enter the name of the segment");
+            } else {
+                alert("Please add at least one entry in schema");
+            }
+            return;
+        }
 
         const data: SchemaData = {
             "segment_name": segmentName,
@@ -116,6 +125,12 @@ const SaveSegment = ({ }) => {
             console.log('Response:', responseData);
         } catch (error) {
             console.error('Error:', error);
+        } finally {
+            alert('Schema saved successfully'); //mock the successful save functionality
+
+            // Reset the selected schema
+            setSelectedOptions([])
+            setOptions(data_options)
         }
     }
 
@@ -161,7 +176,7 @@ const SaveSegment = ({ }) => {
                                                                 <li
                                                                     className='py-1 px-3 hover:bg-slate-100 cursor-pointer'
                                                                     key={key}
-                                                                    onClick={() => ReplaceOptionState(selectedOption, option)}
+                                                                    onClick={() => replaceOptionState(selectedOption, option)}
                                                                 >
                                                                     {option.label}
                                                                 </li>
