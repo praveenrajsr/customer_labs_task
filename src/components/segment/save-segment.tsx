@@ -35,8 +35,10 @@ const data_options: Options[] = [
 
 const SaveSegment = ({ }) => {
     const [key, setKey] = React.useState(+new Date())
-    const [options, setOptions] = useState<Options[]>(data_options)
-    const [selectedOptions, setSelectedOptions] = useState<Options[] | []>([])
+    const [optionsState, setOptionsState] = useState<{ options: Options[], selectedOptions: Options[] }>({
+        options: data_options,
+        selectedOptions: []
+    });
     const [openSection, setOpenSection] = useState<number | null>(null);
     const [value, setValue] = useState<string | undefined>(undefined) //Holds the selected value to reset the add schema select
     const [segmentName, setSegmentName] = useState('')
@@ -58,22 +60,28 @@ const SaveSegment = ({ }) => {
 
 
     const addOptionState = (selectedData: Options) => {
-        setOptions(options.filter(option => option.value !== selectedData.value))
-        setSelectedOptions(prevSelectedOptions => [...prevSelectedOptions, ...(selectedData ? [selectedData] : [])])
+        setOptionsState(prevState => ({
+            options: prevState.options.filter(option => option.value !== selectedData.value),
+            selectedOptions: [...prevState.selectedOptions, ...(selectedData ? [selectedData] : [])]
+        }));
     }
 
-    const replaceOptionState = (oldSelected: Options, newSelectedData: Options) => {
-        setOptions(previousOptions => {
-            let updatedOptions = previousOptions;
-            if (!previousOptions.some(option => option.value === oldSelected.value)) {
-                updatedOptions = [...previousOptions, oldSelected];
+    const replaceOptionState = (oldSelected: Options, newSelectedData: Options, index: number) => {
+        setOptionsState(prevState => {
+            let updatedOptions = prevState.options;
+            if (!prevState.options.some(option => option.value === oldSelected.value)) {
+                updatedOptions = [oldSelected, ...prevState.options];
             }
-            return updatedOptions.filter(option => option.value !== newSelectedData.value);
+            setOpenSection(null)
+            return {
+                options: updatedOptions.filter(option => option.value !== newSelectedData.value),
+                selectedOptions: [
+                    ...prevState.selectedOptions.slice(0, index),
+                    newSelectedData,
+                    ...prevState.selectedOptions.slice(index + 1).filter(option => option.value !== oldSelected.value)
+                ]
+            };
         });
-        setSelectedOptions(prevSelectedOptions => [
-            ...prevSelectedOptions.filter(option => option.value !== oldSelected.value),
-            newSelectedData
-        ])
     }
 
     const addToSchema = (e: FormEvent) => {
@@ -81,14 +89,14 @@ const SaveSegment = ({ }) => {
         const formData = new FormData(e.target as HTMLFormElement);
         const selectedOption = formData.get('addschema') as string;
         if (!selectedOption) return;
-        const selectedData = options.find(option => option.value === selectedOption)
+        const selectedData = optionsState.options.find(option => option.value === selectedOption)
         addOptionState(selectedData as Options)
         setValue(undefined)
         setKey(+new Date())
     }
 
     const saveSegmentEntry = async () => {
-        const schema = selectedOptions.map(option => ({
+        const schema = optionsState.selectedOptions.map(option => ({
             [option.value]: option.label
         }));
         // Basic validation
@@ -129,8 +137,10 @@ const SaveSegment = ({ }) => {
             alert('Schema saved successfully'); //mock the successful save functionality
 
             // Reset the selected schema
-            setSelectedOptions([])
-            setOptions(data_options)
+            setOptionsState({
+                options: data_options,
+                selectedOptions: []
+            });
         }
     }
 
@@ -155,10 +165,10 @@ const SaveSegment = ({ }) => {
                             <p>To save your segment, you need to add the schemas to build the query</p>
                             <form onSubmit={(e: FormEvent) => addToSchema(e)}>
                                 {
-                                    selectedOptions.length > 0 &&
+                                    optionsState.selectedOptions.length > 0 &&
                                     (
                                         <section ref={sectionRef} className='border-2 border-blue-500 px-2 py-4 mt-2'>
-                                            {selectedOptions.map((selectedOption, index) => (
+                                            {optionsState.selectedOptions.map((selectedOption, index) => (
                                                 <div key={index}>
                                                     <Button
                                                         variant={'outline'}
@@ -172,11 +182,11 @@ const SaveSegment = ({ }) => {
                                                         className={` ${openSection === index ? 'h-auto border border-t-0' : 'h-0'} overflow-hidden transition-[height] duration-75 rounded-sm`}
                                                     >
                                                         <ul>
-                                                            {options.map((option, key) => (
+                                                            {optionsState.options.map((option, key) => (
                                                                 <li
                                                                     className='py-1 px-3 hover:bg-slate-100 cursor-pointer'
                                                                     key={key}
-                                                                    onClick={() => replaceOptionState(selectedOption, option)}
+                                                                    onClick={() => replaceOptionState(selectedOption, option, index)}
                                                                 >
                                                                     {option.label}
                                                                 </li>
@@ -197,7 +207,7 @@ const SaveSegment = ({ }) => {
                                             <SelectValue placeholder="Add schema to segment" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {options.map((option, key) => (
+                                            {optionsState.options.map((option, key) => (
                                                 <SelectItem key={key} value={option.value}>{option.label}</SelectItem>
                                             ))}
                                         </SelectContent>
